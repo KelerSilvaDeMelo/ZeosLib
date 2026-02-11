@@ -5961,55 +5961,73 @@ end;
 {$ENDIF}
 
 // NB: FPC has TField.FieldDef property
+// 2026-02-11 Atualizado para Delphi 13 Florence - Keler S Melo
 procedure TZAbstractRODataset.CheckFieldCompatibility(Field: TField; AFieldDef: TFieldDef);
 const
-  {EH: hint all commented types are the fields the RowAccessor can't handle -> avoid stack killing moves in Get/SetFieldData()
-  this Error trapping is made for User-added fields like calculated's ....}
+  { EH:
+    hint all commented types are the fields the RowAccessor can't handle
+    this Error trapping is made for User-added fields like calculated's
+  }
   BaseFieldTypes: array[TFieldType] of TFieldType = (
-    //generic TFieldTypes of FPC and Delphi(since D7, of course):
-    ftUnknown, ftString, ftSmallint, ftInteger, ftWord, // 0..4
-    ftBoolean, ftFloat, ftCurrency, ftBCD, ftDate,  ftTime, ftDateTime, // 5..11
-    ftBytes, ftVarBytes, ftInteger{ftAutoInc}, ftBlob, ftMemo, ftBlob{ftGraphic}, ftMemo{ftFmtMemo}, // 12..18
-    ftBlob{ftParadoxOle}, ftBlob{ftDBaseOle}, ftBlob{ftTypedBinary}, ftUnknown{ftCursor}, ftString{ftFixedChar}, ftWideString, // 19..24
-    ftLargeint, ftUnknown{ftADT}, ftUnknown{ftArray}, ftUnknown{ftReference}, ftDataSet, ftBlob{ftOraBlob}, ftMemo{ftOraClob}, // 25..31
-    ftUnknown{ftVariant}, ftUnknown{ftInterface}, ftUnknown{ftIDispatch}, ftGuid, ftTimeStamp, ftFMTBcd // 32..37
-{$IFDEF FPC} //addition types for FPC
-    , ftWideString{ftFixedWideChar}, ftWideMemo // 38..39
+    // generic TFieldTypes (0..4)
+    ftUnknown, ftString, ftSmallint, ftInteger, ftWord,
+
+    // 5..11
+    ftBoolean, ftFloat, ftCurrency, ftBCD, ftDate, ftTime, ftDateTime,
+
+    // 12..18
+    ftBytes, ftVarBytes, ftInteger {ftAutoInc}, ftBlob, ftMemo,
+    ftBlob {ftGraphic}, ftMemo {ftFmtMemo},
+
+    // 19..24
+    ftBlob {ftParadoxOle}, ftBlob {ftDBaseOle}, ftBlob {ftTypedBinary},
+    ftUnknown {ftCursor}, ftString {ftFixedChar}, ftWideString,
+
+    // 25..31
+    ftLargeint, ftUnknown {ftADT}, ftUnknown {ftArray},
+    ftUnknown {ftReference}, ftDataSet, ftBlob {ftOraBlob}, ftMemo {ftOraClob},
+
+    // 32..37
+    ftUnknown {ftVariant}, ftUnknown {ftInterface},
+    ftUnknown {ftIDispatch}, ftGuid, ftTimeStamp, ftFMTBcd,
+
+{$IFDEF FPC}
+    // FPC additions
+    ftWideString {ftFixedWideChar}, ftWideMemo,
     {$IFDEF WITH_FTLONGWORD}
-    , ftTimeStamp{ftOraTimeStamp}, ftDateTime{ftOraInterval} //40..41
-    , ftLongWord, ftShortint, ftByte, ftExtended //42..45
+    ftTimeStamp {ftOraTimeStamp}, ftDateTime {ftOraInterval},
+    ftLongWord, ftShortint, ftByte, ftExtended,
       {$IFDEF WITH_FTSINGLE}
-        , ftSingle
+      ftSingle,
       {$ENDIF}
     {$ENDIF}
-{$ELSE !FPC}
-{$IF CompilerVersion >= 18} //additional Types since D2006 and D2007
-    , ftWideString{ftFixedWideChar}, ftWideMemo, ftDateTime{ftOraTimeStamp}, ftDateTime{ftOraInterval} // 38..41
-{$IF CompilerVersion >= 20} //additional Types since D2009
-    , ftLongWord, ftShortint, ftByte, ftExtended, ftUnknown{ftConnection}, ftUnknown{ftParams}, ftBlob{ftStream} //42..48
-{$IF CompilerVersion >= 21} //additional Types since D2010
-    , ftDateTime{ftTimeStampOffset}, ftUnknown{ftObject}, ftSingle //49..51
-{$IFEND CompilerVersion >= 21}
-{$IFEND CompilerVersion >= 20}
-{$IFEND CompilerVersion >= 18}
-{$ENDIF FPC}
+{$ELSE}
+  {$IF CompilerVersion >= 18} // D2006+
+    ftWideString {ftFixedWideChar}, ftWideMemo,
+    ftDateTime {ftOraTimeStamp}, ftDateTime {ftOraInterval}
+    {$IF CompilerVersion >= 20} // D2009+
+      , ftLongWord, ftShortint, ftByte, ftExtended,
+        ftUnknown {ftConnection}, ftUnknown {ftParams}, ftBlob {ftStream}
+      {$IF CompilerVersion >= 21} // D2010+
+        , ftDateTime {ftTimeStampOffset}, ftUnknown {ftObject}, ftSingle
+        {$IF CompilerVersion >= 35} // Delphi 12+ (Athens/Florence)
+          , ftUnknown {ftLargeUint}
+        {$IFEND}
+      {$IFEND}
+    {$IFEND}
+  {$IFEND}
+{$ENDIF}
   );
+
   CheckTypeSizes = [ftBytes, ftVarBytes, ftBCD, ftReference, ftFmtBCD];
+
 begin
-  (* EH: uncomment this (just prepared) if ftAutoInc should be supported
-  if {$IFDEF WITH_TAUTOREFRESHFLAG}(AutoGenerateValue = arAutoInc) and {$ENDIF}
-     (Field.DataType = ftAutoInc) and (AFieldDef is TZFieldDef) then
-     if (AFieldDef.DataType [ftSmallint, ftInteger, ftWord, ftBCD,
-          ftLargeint, ftFMTBcd, ftLongWord, ftShortint, ftByte) then begin
-       if (Field.Size <> 0) then
-          RaiseFieldSizeMismatchError(Field, AFieldDef);
-     end else
-        RaiseFieldTypeMismatchError(Field, AFieldDef)
-  else *)
   if (BaseFieldTypes[Field.DataType] <> BaseFieldTypes[AFieldDef.DataType]) then
     RaiseFieldTypeMismatchError(Field, AFieldDef);
-  if (Field.DataType in CheckTypeSizes) and (Field.Size <> AFieldDef.Size) then
-     RaiseFieldSizeMismatchError(Field, AFieldDef);
+
+  if (Field.DataType in CheckTypeSizes) and
+     (Field.Size <> AFieldDef.Size) then
+    RaiseFieldSizeMismatchError(Field, AFieldDef);
 end;
 
 {$IFDEF WITH_IPROVIDERSUPPORT_GUID}
